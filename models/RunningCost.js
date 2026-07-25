@@ -22,4 +22,6 @@ const runningCostSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+runningCostSchema.index({ barberShop: 1, createdAt: -1 });
+
 module.exports = mongoose.model("RunningCost", runningCostSchema);

@@ -52,6 +52,6 @@ const serviceLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-serviceLogSchema.index({ barberShop: 1, createdAt: 1 });
+serviceLogSchema.index({ barberShop: 1, createdAt: -1 });
 
 module.exports = mongoose.model("ServiceLog", serviceLogSchema);

@@ -32,4 +32,6 @@ const monthlyExpenseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+monthlyExpenseSchema.index({ barberShop: 1, month: -1 });
+
 module.exports = mongoose.model("MonthlyExpense", monthlyExpenseSchema);

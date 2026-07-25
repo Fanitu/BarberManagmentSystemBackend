@@ -4,6 +4,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 const { startPayoutCron } = require("./cron/payoutCron");
+const { startDailySummaryCron } = require("./cron/dailySummaryCron");
 
 const authRoutes = require("./routes/authRoutes");
 const barberRoutes = require("./routes/barberRoutes");
@@ -40,7 +41,8 @@ const PORT = process.env.PORT || 5000;
 const start = async () => {
   await connectDB();
   startPayoutCron();
-  app.listen(PORT,'0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+  startDailySummaryCron();
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 };
 
 start();

@@ -12,6 +12,7 @@ const computeBarberPayout = async (barberId, barberShop) => {
     ServiceLog.find({ barber: barberId, barberShop, status: "unpaid" }),
     Debt.find({ barber: barberId, barberShop, status: "unpaid" }),
   ]);
+  const totalServicesGross = logs.reduce((sum,log)=>sum + log.price ,0)
 
   const totalServicesIncome = logs.reduce(
     (sum, log) => sum + (log.price * (100 - log.shopPercent)) / 100,
@@ -21,6 +22,7 @@ const computeBarberPayout = async (barberId, barberShop) => {
   const finalIncome = totalServicesIncome - debtAmount;
 
   return {
+    totalServicesGross,
     totalServicesIncome,
     debtAmount,
     finalIncome,
@@ -52,8 +54,9 @@ const listPayableBarbersToday = async (req, res, next) => {
         };
       })
     );
+    const owed = payouts.filter((p)=> p.totalServicesGross> 0 || p.debtAmount > 0)
 
-    res.json(payouts);
+    res.json(owed);
   } catch (err) {
     next(err);
   }
@@ -89,6 +92,7 @@ const payBarberNow = async (req, res, next) => {
     ]);
 
     res.json({
+      totalServicesGross: payout.totalServicesGross,
       message: `${barber.name} marked as paid`,
       barber: { id: barber._id, name: barber.name },
       totalServicesIncome: payout.totalServicesIncome,
