@@ -263,14 +263,17 @@ const groupServiceLogs = (logs) => {
  * `logs` must already be .populate("barber", "name")'d.
  */
 const groupServiceLogsByBarber = (logs) => {
-  const map = new Map();
-  for (const log of logs) {
-    const name = log.barber?.name || "Unknown Barber";
-    if (!map.has(name)) map.set(name, { name, count: 0 });
-    map.get(name).count += 1;
-  }
-  return Array.from(map.values()).sort((a, b) => b.count - a.count);
-};
+    const map = new Map();
+    for (const log of logs) {
+      const name = log.barber?.name || "Unknown Barber";
+
+     if (!map.has(name)) map.set(name, { name, count: 0, cut: 0 });
+     const g = map.get(name);
+     g.count += 1;
+     g.cut += (log.price * (100 - log.shopPercent)) / 100;
+    }
+   return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  };
 const groupRunningCosts = (costs) => {
   const map = new Map();
   for (const cost of costs) {
