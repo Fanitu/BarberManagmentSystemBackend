@@ -3,6 +3,7 @@ const ServiceLog = require("../models/ServiceLog");
 const RunningCost = require("../models/RunningCost");
 const DailySummary = require("../models/DailySummary");
 const BarberShop = require("../models/BarberShop");
+const { toAddisWallClock } = require("../utils/dateRanges");
 
 const TIMEZONE = process.env.SUMMARY_TIMEZONE || "Africa/Addis_Ababa";
 const BACKFILL_DAYS = 7; // how many past days to re-check on server startup
@@ -11,10 +12,18 @@ const BACKFILL_DAYS = 7; // how many past days to re-check on server startup
  * Generates (upserts) the daily summary for one shop, one day.
  */
 async function generateDailySummary(barberShopId, date) {
-  const start = new Date(date);
+  // Convert the date to Addis Ababa time
+  const addisDate = new Date(date.getTime() + 3 * 60 * 60 * 1000); // Addis Ababa is UTC+3
+  
+  // Set to start of day (12:00:00.000 AM)
+  const start = new Date(addisDate);
   start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
+  console.log('this is the start date:', start);
+  
+  // Set to end of day (11:59:59.999 PM)
+  const end = new Date(addisDate);
   end.setHours(23, 59, 59, 999);
+  console.log('this is the end date:', end);
 
   const [serviceData, runningCostData] = await Promise.all([
     ServiceLog.aggregate([
@@ -67,8 +76,8 @@ async function generateDailySummary(barberShopId, date) {
  * day are left untouched instead of being recomputed.
  */
 async function generateSummariesForDate(date, { skipExisting = false } = {}) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  const start = toAddisWallClock(date);
+  start.setHours(23,59,59,59);
 
   const shops = await BarberShop.find({}, "_id");
 
@@ -84,7 +93,7 @@ async function generateSummariesForDate(date, { skipExisting = false } = {}) {
     return;
   }
 
-  await Promise.all(targetShops.map((shop) => generateDailySummary(shop._id, date)));
+  await Promise.all(targetShops.map((shop) => generateDailySummary(shop._id, start)));
   console.log(
     `[daily-summary] generated for ${start.toISOString().split("T")[0]} (${targetShops.length}/${shops.length} shop(s))`
   );

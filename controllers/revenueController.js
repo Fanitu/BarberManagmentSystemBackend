@@ -50,7 +50,16 @@ const sumRunningCosts = async (barberShop, start, end) => {
 
 const sumMonthlyExpenses = async (barberShop, monthStart) => {
   const result = await MonthlyExpense.aggregate([
-    { $match: { barberShop, month: monthStart } },
+    {
+      $match: {
+        barberShop,
+        month: { $lte: monthStart }, // started on or before this month
+        $or: [
+          { isActive: true }, // still active -> counts for every month since it started
+          { deactivatedAt: { $gte: monthStart } }, // deleted, but not until at/after this month
+        ],
+      },
+    },
     { $group: { _id: null, total: { $sum: "$price" } } },
   ]);
   return result[0]?.total || 0;
@@ -121,8 +130,7 @@ const computePeriodEntry = async (barberShopId, period, referenceDate) => {
   const entry = { start, end, totalRevenue, barbersPayment, runningCost, totalIncome };
 
   if (period === "monthly") {
-    const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
-    const monthlyExpense = await sumMonthlyExpenses(barberShopId, monthStart);
+    const monthlyExpense = await sumMonthlyExpenses(barberShopId, start);
     entry.monthlyExpense = monthlyExpense;
     entry.profit = totalIncome - monthlyExpense;
   }
@@ -225,5 +233,144 @@ const getRevenueHistory = async (req, res, next) => {
     next(err);
   }
 };
+/**
+ * Groups ServiceLog entries by (service name, price) — same service at the
+ * same price collapses into one row: { name, price, count, total }.
+ * `logs` must already be .populate("service", "name")'d.
+ */
+const groupServiceLogs = (logs) => {
+  const map = new Map();
+  for (const log of logs) {
+    const name = log.service?.name || "Unknown Service";
+    const key = `${name}|${log.price}`;
+    if (!map.has(key)) map.set(key, { name, price: log.price, count: 0, total: 0 });
+    const g = map.get(key);
+    g.count += 1;
+    g.total += log.price;
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+};
 
-module.exports = { getRevenue, getRevenueHistory };
+/**
+ * Groups RunningCost entries by name ONLY (not price, since the same
+ * running cost can legitimately cost different amounts on different
+ * occasions) — sums whatever the actual prices were: { name, count, total }.
+ */
+
+/**
+ * Groups ServiceLog entries by barber, counting how many services each
+ * one performed — powers the "Barbers Performance" block.
+ * `logs` must already be .populate("barber", "name")'d.
+ */
+const groupServiceLogsByBarber = (logs) => {
+  const map = new Map();
+  for (const log of logs) {
+    const name = log.barber?.name || "Unknown Barber";
+    if (!map.has(name)) map.set(name, { name, count: 0 });
+    map.get(name).count += 1;
+  }
+  return Array.from(map.values()).sort((a, b) => b.count - a.count);
+};
+const groupRunningCosts = (costs) => {
+  const map = new Map();
+  for (const cost of costs) {
+    if (!map.has(cost.name)) map.set(cost.name, { name: cost.name, count: 0, total: 0 });
+    const g = map.get(cost.name);
+    g.count += 1;
+    g.total += cost.price;
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+};
+
+/**
+ * GET /api/revenue/daily-detail?date=YYYY-MM-DD  (admin only)
+ * The raw, ungrouped list of every service and running-cost entry for one
+ * specific day — what backs the "View Daily" button.
+ */
+const getDailyDetail = async (req, res, next) => {
+  try {
+    const { date } = req.query;
+    const referenceDate = date ? new Date(date) : new Date();
+    const barberShopId = new mongoose.Types.ObjectId(req.user.barberShop);
+    const { start, end } = getDateRange("daily", referenceDate);
+
+    const [logs, costs] = await Promise.all([
+      ServiceLog.find({ barberShop: barberShopId, createdAt: { $gte: start, $lte: end } })
+        .populate("barber", "name")
+        .populate("service", "name")
+        .sort({ createdAt: -1 }),
+      RunningCost.find({ barberShop: barberShopId, createdAt: { $gte: start, $lte: end } }).sort({
+        createdAt: -1,
+      }),
+    ]);
+
+    res.json({
+      period: "daily",
+      start,
+      end,
+      services: logs.map((log) => ({
+        id: log._id,
+        barberName: log.barber?.name || "Unknown",
+        serviceName: log.service?.name || "Unknown",
+        price: log.price,
+      })),
+      runningCosts: costs.map((c) => ({ id: c._id, name: c.name, price: c.price })),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Shared implementation for the weekly/monthly detail endpoints — same
+ * shape, only the date range differs. Groups+counts instead of returning
+ * a raw per-day list, per spec ("we don't need to separate them by dates").
+ */
+const getGroupedPeriodDetail = async (req, res, next, period) => {
+  try {
+    const { date } = req.query;
+    const referenceDate = date ? new Date(date) : new Date();
+    const barberShopId = new mongoose.Types.ObjectId(req.user.barberShop);
+    const { start, end } = getDateRange(period, referenceDate);
+
+    const [logs, costs] = await Promise.all([
+      ServiceLog.find({ barberShop: barberShopId, createdAt: { $gte: start, $lte: end } }).populate(
+        "service",
+        "name"
+      )
+      .populate("barber", "name"),
+      RunningCost.find({ barberShop: barberShopId, createdAt: { $gte: start, $lte: end } }),
+    ]);
+
+    res.json({
+      period,
+      start,
+      end,
+      barbers: groupServiceLogsByBarber(logs),
+      services: groupServiceLogs(logs),
+      runningCosts: groupRunningCosts(costs),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/revenue/weekly-detail?date=YYYY-MM-DD  (admin only)
+ * Backs the "View Weekly" button.
+ */
+const getWeeklyDetail = (req, res, next) => getGroupedPeriodDetail(req, res, next, "weekly");
+
+/**
+ * GET /api/revenue/monthly-detail?date=YYYY-MM-DD  (admin only)
+ * Backs the "View Monthly" button.
+ */
+const getMonthlyDetail = (req, res, next) => getGroupedPeriodDetail(req, res, next, "monthly");
+
+module.exports = {
+  getRevenue,
+  getRevenueHistory,
+  getDailyDetail,
+  getWeeklyDetail,
+  getMonthlyDetail,
+};

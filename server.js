@@ -1,8 +1,12 @@
 require("dotenv").config();
+process.env.TZ = process.env.APP_TIMEZONE || "Africa/Addis_Ababa";
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
 const connectDB = require("./config/db");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const { generalLimiter } = require("./middleware/rateLimiter");
 const { startPayoutCron } = require("./cron/payoutCron");
 const { startDailySummaryCron } = require("./cron/dailySummaryCron");
 
@@ -18,8 +22,36 @@ const superAdminRoutes = require("./routes/superAdminRoutes");
 
 const app = express();
 
-app.use(cors());
+// Security headers
+app.use(helmet());
+
+
+const ALLOWED_ORIGINS = (
+  process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:5174"
+)
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // No Origin header = non-browser request (curl, Postman, server-to-server,
+      // health checks) — allow those through; browsers always send Origin.
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin "${origin}" is not allowed by CORS`));
+    },
+    credentials: true, // needed once auth moves to cookies (next phase)
+  })
+);
+
 app.use(express.json());
+
+app.use(mongoSanitize());
+
+app.use("/api", generalLimiter);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

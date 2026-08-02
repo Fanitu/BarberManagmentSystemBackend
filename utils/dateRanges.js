@@ -2,6 +2,8 @@
  * Returns { start, end } Date objects for the given period, anchored to
  * `referenceDate` (defaults to now). Weeks run Monday -> Sunday.
  */
+
+const ADDIS_OFFSET_MS = 3 * 60 * 60 * 1000;
 const getDateRange = (period, referenceDate = new Date()) => {
   const ref = new Date(referenceDate);
 
@@ -37,4 +39,17 @@ const getDateRange = (period, referenceDate = new Date()) => {
   throw new Error(`Unknown period: ${period}`);
 };
 
-module.exports = { getDateRange };
+
+const toAddisWallClock = (date = new Date()) => new Date(date.getTime() + ADDIS_OFFSET_MS);
+/**
+ * Returns the real (UTC) instant corresponding to 00:00:00 Addis Ababa
+ * time on the 1st of the Addis-Ababa calendar month that `date` falls in.
+ */
+const startOfAddisMonth = (date = new Date()) => {
+  const wall = toAddisWallClock(date);
+  const y = wall.getUTCFullYear();
+  const m = wall.getUTCMonth();
+  return new Date(Date.UTC(y, m, 1, 0, 0, 0, 0) - ADDIS_OFFSET_MS);
+};
+
+module.exports = { getDateRange, startOfAddisMonth ,toAddisWallClock};

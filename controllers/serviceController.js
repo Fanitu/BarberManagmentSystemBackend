@@ -111,6 +111,54 @@ const submitServiceLog = async (req, res, next) => {
   }
 };
 
+// PUT /api/services/log/:id  (worker only) - correct a mistaken entry
+// body: { barberId, serviceId, price }
+// Only allowed while the entry is still "unpaid" — once a payout has
+// processed it, editing it would retroactively corrupt that payout's numbers.
+const updateServiceLog = async (req, res, next) => {
+  try {
+    const { barberId, serviceId, price } = req.body;
+
+    if (!barberId || !serviceId || price == null) {
+      return res
+        .status(400)
+        .json({ message: "barberId, serviceId and price are required" });
+    }
+
+    const [barber, service] = await Promise.all([
+      Barber.findOne({ _id: barberId, barberShop: req.user.barberShop }),
+      Service.findOne({ _id: serviceId, barberShop: req.user.barberShop }),
+    ]);
+
+    if (!barber) return res.status(404).json({ message: "Barber not found" });
+    if (!service) return res.status(404).json({ message: "Service not found" });
+
+    const log = await ServiceLog.findOneAndUpdate(
+      { _id: req.params.id, barberShop: req.user.barberShop, status: "unpaid" },
+      {
+        barber: barber._id,
+        service: service._id,
+        price,
+        shopPercent: service.shopPercent,
+      },
+      { new: true, runValidators: true }
+    )
+      .populate("barber", "name")
+      .populate("service", "name");
+
+    if (!log) {
+      return res.status(404).json({
+        message:
+          "Entry not found, or it has already been paid out and can no longer be edited",
+      });
+    }
+
+    res.json(log);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /api/services/log/today  (worker or admin) - today's entries for this shop
 const listTodayServiceLogs = async (req, res, next) => {
   try {
@@ -139,5 +187,6 @@ module.exports = {
   updateService,
   deleteService,
   submitServiceLog,
+  updateServiceLog,
   listTodayServiceLogs,
 };
