@@ -368,6 +368,57 @@ const getWeeklyDetail = (req, res, next) => getGroupedPeriodDetail(req, res, nex
  * GET /api/revenue/monthly-detail?date=YYYY-MM-DD  (admin only)
  * Backs the "View Monthly" button.
  */
+
+/**
+ * GET /api/revenue/monthly-barber-performance?date=YYYY-MM-DD
+ * Returns barber performance data for a specific month
+ */
+const getMonthlyBarberPerformance = async (req, res, next) => {
+  try {
+    const { date } = req.query;
+    const referenceDate = date ? new Date(date) : new Date();
+    const barberShopId = new mongoose.Types.ObjectId(req.user.barberShop);
+    const { start, end } = getDateRange("monthly", referenceDate);
+
+    const performance = await ServiceLog.aggregate([
+      {
+        $match: {
+          barberShop: barberShopId,
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: "$barber",
+          totalRevenue: { $sum: "$price" },
+          serviceCount: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: "barbers",
+          localField: "_id",
+          foreignField: "_id",
+          as: "barber",
+        },
+      },
+      { $unwind: "$barber" },
+      {
+        $project: {
+          _id: 0,
+          barberName: "$barber.name",
+          totalRevenue: 1,
+          serviceCount: 1,
+        },
+      },
+      { $sort: { totalRevenue: -1 } },
+    ]);
+
+    res.json({ period: "monthly", start, end, barbers: performance });
+  } catch (err) {
+    next(err);
+  }
+};
 const getMonthlyDetail = (req, res, next) => getGroupedPeriodDetail(req, res, next, "monthly");
 
 module.exports = {
@@ -376,4 +427,5 @@ module.exports = {
   getDailyDetail,
   getWeeklyDetail,
   getMonthlyDetail,
+  getMonthlyBarberPerformance
 };
