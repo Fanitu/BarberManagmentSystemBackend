@@ -5,23 +5,34 @@ const Admin = require("../models/Admin");
 const SuperAdmin = require("../models/SuperAdmin");
 const generateToken = require("../utils/generateToken");
 
-/**
- * POST /api/auth/worker/login
- * body: { name, password, barberCode }
- *
- * Matches the spec: if the barber code doesn't exist, tell the client.
- * If it exists, look for a worker with that name+password under the shop.
- * If no worker exists yet with that name, create one (first-login = signup).
- * If a worker with that name exists but the password doesn't match, reject.
- */
+// Helper function to set cookie
+const setTokenCookie = (res, token) => {
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    path: '/'
+  });
+};
+
+// Helper function to clear cookie
+const clearTokenCookie = (res) => {
+  res.cookie('token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 0,
+    path: '/'
+  });
+};
+
 const workerLogin = async (req, res, next) => {
   try {
     const { name, password, barberCode } = req.body;
 
     if (!name || !password || !barberCode) {
-      return res
-        .status(400)
-        .json({ message: "name, password and barberCode are required" });
+      return res.status(400).json({ message: "name, password and barberCode are required" });
     }
 
     const shop = await BarberShop.findOne({
@@ -36,7 +47,6 @@ const workerLogin = async (req, res, next) => {
     let worker = await Worker.findOne({ name: name.trim(), barberShop: shop._id });
 
     if (!worker) {
-      // First time this name is used under this shop -> create the account.
       const hashed = await bcrypt.hash(password, 10);
       worker = await Worker.create({
         name: name.trim(),
@@ -56,8 +66,10 @@ const workerLogin = async (req, res, next) => {
       barberShop: shop._id,
     });
 
+    // Set cookie instead of sending token
+    setTokenCookie(res, token);
+
     res.json({
-      token,
       user: { id: worker._id, name: worker.name, role: "worker" },
       barberShop: { id: shop._id, name: shop.name },
     });
@@ -66,28 +78,12 @@ const workerLogin = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/auth/login
- * body: { name, password, barberCode }
- *
- * Unified login for the merged Worker/Admin frontend: the client doesn't
- * know or send a role, the backend figures out who "name" is under this
- * shop and returns the right one.
- *
- * Order matters: Admin accounts are provisioned ahead of time and never
- * auto-created, so we check Admin first. If no admin or worker matches
- * the name at all, we fall back to the worker auto-register behavior
- * (first login with a valid barber code creates a worker account) —
- * same as the original spec's worker-only flow.
- */
 const login = async (req, res, next) => {
   try {
     const { name, password, barberCode } = req.body;
 
     if (!name || !password || !barberCode) {
-      return res
-        .status(400)
-        .json({ message: "name, password and barberCode are required" });
+      return res.status(400).json({ message: "name, password and barberCode are required" });
     }
 
     const shop = await BarberShop.findOne({
@@ -108,8 +104,11 @@ const login = async (req, res, next) => {
         return res.status(401).json({ message: "Invalid name or password" });
       }
       const token = generateToken({ id: admin._id, role: "admin", barberShop: shop._id });
+      
+      // Set cookie instead of sending token
+      setTokenCookie(res, token);
+      
       return res.json({
-        token,
         user: { id: admin._id, name: admin.name, role: "admin" },
         barberShop: { id: shop._id, name: shop.name },
       });
@@ -118,7 +117,6 @@ const login = async (req, res, next) => {
     let worker = await Worker.findOne({ name: trimmedName, barberShop: shop._id });
 
     if (!worker) {
-      // No admin and no worker with this name yet -> auto-register as a worker.
       const hashed = await bcrypt.hash(password, 10);
       worker = await Worker.create({
         name: trimmedName,
@@ -133,8 +131,11 @@ const login = async (req, res, next) => {
     }
 
     const token = generateToken({ id: worker._id, role: "worker", barberShop: shop._id });
+    
+    // Set cookie instead of sending token
+    setTokenCookie(res, token);
+    
     res.json({
-      token,
       user: { id: worker._id, name: worker.name, role: "worker" },
       barberShop: { id: shop._id, name: shop.name },
     });
@@ -143,21 +144,12 @@ const login = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/auth/admin/login
- * body: { name, password, barberCode }
- *
- * Admin accounts are provisioned ahead of time (via super admin / seed),
- * so this does not auto-create an account like the worker login does.
- */
 const adminLogin = async (req, res, next) => {
   try {
     const { name, password, barberCode } = req.body;
 
     if (!name || !password || !barberCode) {
-      return res
-        .status(400)
-        .json({ message: "name, password and barberCode are required" });
+      return res.status(400).json({ message: "name, password and barberCode are required" });
     }
 
     const shop = await BarberShop.findOne({
@@ -186,8 +178,10 @@ const adminLogin = async (req, res, next) => {
       barberShop: shop._id,
     });
 
+    // Set cookie instead of sending token
+    setTokenCookie(res, token);
+
     res.json({
-      token,
       user: { id: admin._id, name: admin.name, role: "admin" },
       barberShop: { id: shop._id, name: shop.name },
     });
@@ -196,10 +190,6 @@ const adminLogin = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/auth/superadmin/login
- * body: { email, password }
- */
 const superAdminLogin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -221,8 +211,10 @@ const superAdminLogin = async (req, res, next) => {
 
     const token = generateToken({ id: superAdmin._id, role: "superadmin" });
 
+    // Set cookie instead of sending token
+    setTokenCookie(res, token);
+
     res.json({
-      token,
       user: { id: superAdmin._id, name: superAdmin.name, role: "superadmin" },
     });
   } catch (err) {
@@ -230,4 +222,83 @@ const superAdminLogin = async (req, res, next) => {
   }
 };
 
-module.exports = { login, workerLogin, adminLogin, superAdminLogin };
+// Add new logout endpoint
+const logout = async (req, res) => {
+  clearTokenCookie(res);
+  res.json({ message: "Logged out successfully" });
+};
+
+// Add endpoint to verify session and get current user
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const token = req.cookies?.token;
+    
+    if (!token) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    const jwt = require("jsonwebtoken");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role === 'superadmin') {
+      const superAdmin = await SuperAdmin.findById(decoded.id);
+      return res.json({
+        user: { id: superAdmin._id, name: superAdmin.name, role: "superadmin" },
+      });
+    }
+    
+    if (decoded.role === 'admin') {
+      const admin = await Admin.findById(decoded.id);
+      const shop = await BarberShop.findById(decoded.barberShop);
+      return res.json({
+        user: { id: admin._id, name: admin.name, role: "admin" },
+        barberShop: { id: shop._id, name: shop.name },
+      });
+    }
+    
+    if (decoded.role === 'worker') {
+      const worker = await Worker.findById(decoded.id);
+      const shop = await BarberShop.findById(decoded.barberShop);
+      return res.json({
+        user: { id: worker._id, name: worker.name, role: "worker" },
+        barberShop: { id: shop._id, name: shop.name },
+      });
+    }
+    
+    res.status(400).json({ message: "Invalid user role" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+const getCurrentSuperAdmin = async (req, res, next) => {
+  try {
+    const superAdmin = await SuperAdmin.findById(req.user.id);
+    
+    if (!superAdmin) {
+      return res.status(404).json({ message: "Super admin not found" });
+    }
+    
+    res.json({
+      user: { 
+        id: superAdmin._id, 
+        name: superAdmin.name, 
+        email: superAdmin.email,
+        role: "superadmin" 
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { 
+  login, 
+  workerLogin, 
+  adminLogin, 
+  superAdminLogin, 
+  logout, 
+  getCurrentUser,
+  getCurrentSuperAdmin
+};

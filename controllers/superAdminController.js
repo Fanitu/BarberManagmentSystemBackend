@@ -7,13 +7,14 @@ const generateBarberCode = require("../utils/generateBarberCode");
 // body: { name, ownerName, ownerPhone }
 // Creates a new tenant and generates its unique barber code.
 const createBarberShop = async (req, res, next) => {
+  console.log("Creating barber shop with data:", req.body);
   try {
     const { name, ownerName, ownerPhone } = req.body;
 
-    if (!name) {
+   /*  if (!name) {
       return res.status(400).json({ message: "name is required" });
     }
-
+ */
     let barberCode;
     let attempts = 0;
     // Regenerate on the rare collision instead of failing the request.

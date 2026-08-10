@@ -1,6 +1,7 @@
 require("dotenv").config();
 process.env.TZ = process.env.APP_TIMEZONE || "Africa/Addis_Ababa";
 const express = require("express");
+const cookieParser = require('cookie-parser');
 const cors = require("cors");
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -50,6 +51,9 @@ app.use(
 app.use(express.json());
 
 app.use(mongoSanitize());
+
+// Add this before your routes
+app.use(cookieParser());
 
 app.use("/api", generalLimiter);
 

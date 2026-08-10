@@ -16,7 +16,7 @@ const {
 
 router.use(protect, requireRole("superadmin"));
 
-router.post("/shops", createShopValidator, handleValidationErrors, createBarberShop);
+router.post("/shops",createBarberShop);
 router.get("/shops", listBarberShops);
 router.patch(
   "/shops/:id/deactivate",

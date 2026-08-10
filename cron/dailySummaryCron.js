@@ -18,12 +18,10 @@ async function generateDailySummary(barberShopId, date) {
   // Set to start of day (12:00:00.000 AM)
   const start = new Date(addisDate);
   start.setHours(0, 0, 0, 0);
-  console.log('this is the start date:', start);
   
   // Set to end of day (11:59:59.999 PM)
   const end = new Date(addisDate);
   end.setHours(23, 59, 59, 999);
-  console.log('this is the end date:', end);
 
   const [serviceData, runningCostData] = await Promise.all([
     ServiceLog.aggregate([

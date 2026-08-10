@@ -1,17 +1,14 @@
 const jwt = require("jsonwebtoken");
 
-/**
- * Verifies the Bearer token and attaches the decoded payload to req.user.
- * Payload shape: { id, role: 'worker'|'admin'|'superadmin', barberShop? }
- */
 const protect = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  // Check for token in cookies first, then fall back to Authorization header
+  const token = req.cookies?.token || 
+                (req.headers.authorization?.startsWith("Bearer ") ? 
+                 req.headers.authorization.split(" ")[1] : null);
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!token) {
     return res.status(401).json({ message: "Not authorized, no token" });
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -22,11 +19,9 @@ const protect = (req, res, next) => {
   }
 };
 
-/**
- * Restricts access to one or more roles. Use after `protect`.
- * e.g. router.get('/', protect, requireRole('admin'), handler)
- */
 const requireRole = (...roles) => (req, res, next) => {
+  console.log("User role:", req.user?.role); // Debugging line
+  console.log("coming user var:", req.user); // Debugging line
   if (!req.user || !roles.includes(req.user.role)) {
     return res.status(403).json({ message: "Forbidden: insufficient role" });
   }
