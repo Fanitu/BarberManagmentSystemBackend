@@ -28,7 +28,7 @@ app.use(helmet());
 
 
 const ALLOWED_ORIGINS = (
-  process.env.ALLOWED_ORIGINS || "https://barber-super-admin-seven.vercel.app/,https://barber-managment-system.vercel.app/"
+  process.env.ALLOWED_ORIGINS || "https://barber-super-admin-seven.vercel.app,https://barber-managment-system.vercel.app"
 )
   .split(",")
   .map((o) => o.trim())
