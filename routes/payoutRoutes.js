@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { protect, requireRole } = require("../middleware/auth");
 const { handleValidationErrors } = require("../middleware/validate");
-const { payBarberValidator } = require("../validators/payoutValidators");
+const { payBarberValidator } = require("../validators/PayoutValidators");
 const {
   listPayableBarbersToday,
   payBarberNow,
