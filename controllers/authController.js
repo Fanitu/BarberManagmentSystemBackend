@@ -20,8 +20,8 @@ const setTokenCookie = (res, token) => {
 const clearTokenCookie = (res) => {
   res.cookie('token', '', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true,
+    sameSite: 'none',
     maxAge: 0,
     path: '/'
   });
