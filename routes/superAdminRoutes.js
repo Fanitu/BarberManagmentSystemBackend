@@ -11,7 +11,18 @@ const {
   createBarberShop,
   listBarberShops,
   deactivateBarberShop,
-  createShopAdmin,
+  inviteShopAdmin,
+  inviteChainAdmin,
+  renewShopSubscription,
+  activateShopPaid,
+   activateShop,
+  listAllAdmins,
+  listAllChainAdmins,
+  listChainAdminsOverview,
+  renewChainAdminSubscription,
+  activateChainAdminPaid,
+  listEndingSoon,
+  getDashboard,
 } = require("../controllers/superAdminController");
 
 router.use(protect, requireRole("superadmin"));
@@ -24,11 +35,20 @@ router.patch(
   handleValidationErrors,
   deactivateBarberShop
 );
-router.post(
-  "/shops/:id/admins",
-  createShopAdminValidator,
-  handleValidationErrors,
-  createShopAdmin
-);
+router.post("/shops/:id/invite", shopIdParamValidator, handleValidationErrors, inviteShopAdmin);
 
+router.post("/chain-admins/invite", inviteChainAdmin);
+
+router.patch("/shops/:id/renew", shopIdParamValidator, handleValidationErrors, renewShopSubscription);
+router.patch("/shops/:id/activate-paid", shopIdParamValidator, handleValidationErrors, activateShopPaid);
+
+router.patch("/shops/:id/activate", shopIdParamValidator, handleValidationErrors, activateShop);
+router.get("/admins", listAllAdmins);
+router.get("/chain-admins", listAllChainAdmins);
+
+router.get("/chain-admins/overview", listChainAdminsOverview);
+router.patch("/chain-admins/:id/renew", renewChainAdminSubscription);
+router.patch("/chain-admins/:id/activate-paid", activateChainAdminPaid);
+router.get("/subscriptions/ending-soon", listEndingSoon);
+router.get("/dashboard", getDashboard);
 module.exports = router;

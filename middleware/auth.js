@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 
+const Worker = require("../models/Worker");
+
 const protect = (req, res, next) => {
   // Check for token in cookies first, then fall back to Authorization header
   const token = req.cookies?.token || 
@@ -20,12 +22,19 @@ const protect = (req, res, next) => {
 };
 
 const requireRole = (...roles) => (req, res, next) => {
-  console.log("User role:", req.user?.role); // Debugging line
-  console.log("coming user var:", req.user); // Debugging line
   if (!req.user || !roles.includes(req.user.role)) {
     return res.status(403).json({ message: "Forbidden: insufficient role" });
   }
   next();
 };
 
-module.exports = { protect, requireRole };
+const requireActiveWorker = async (req, res, next) => {
+  if (req.user?.role !== "worker") return next(); // only gates workers
+  const worker = await Worker.findById(req.user.id);
+  if (!worker || !worker.isActive) {
+    return res.status(403).json({ message: "Your account is pending admin approval" });
+  }
+  next();
+};
+
+module.exports = { protect, requireRole, requireActiveWorker };

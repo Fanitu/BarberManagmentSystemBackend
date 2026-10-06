@@ -17,6 +17,10 @@ const workerSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    isActive: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

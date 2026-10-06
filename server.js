@@ -10,6 +10,9 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 const { generalLimiter } = require("./middleware/rateLimiter");
 const { startPayoutCron } = require("./cron/payoutCron");
 const { startDailySummaryCron } = require("./cron/dailySummaryCron");
+const { startChainEmailAnalysisCron } = require("./cron/chainEmailAnalysisCron");
+const { startTelegramBot } = require("./bot/telegramBot");
+const { startChainTelegramAnalysisCron } = require("./cron/chainTelegramAnalysisCron");
 
 const authRoutes = require("./routes/authRoutes");
 const barberRoutes = require("./routes/barberRoutes");
@@ -19,7 +22,9 @@ const runningCostRoutes = require("./routes/runningCostRoutes");
 const monthlyExpenseRoutes = require("./routes/monthlyExpenseRoutes");
 const revenueRoutes = require("./routes/revenueRoutes");
 const payoutRoutes = require("./routes/payoutRoutes");
+const chainAdminRoutes = require("./routes/chainAdminRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
+const workerRoutes = require("./routes/workersRoutes");
 
 const app = express();
 
@@ -28,7 +33,7 @@ app.use(helmet());
 
 
 const ALLOWED_ORIGINS = (
-  process.env.ALLOWED_ORIGINS || "https://barber-super-admin-seven.vercel.app,https://barber-managment-system.vercel.app"
+  process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:5174"
 )
   .split(",")
   .map((o) => o.trim())
@@ -69,15 +74,24 @@ app.use("/api/revenue", revenueRoutes);
 app.use("/api/payouts", payoutRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 
+app.use("/api/chainadmin",(req,res,next) =>{ 
+    console.log("we get to chainadmin:", req.body) 
+    next()}, chainAdminRoutes);
+app.use("/api/workers", workerRoutes);
+
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+
+const PORT = process.env.PORT || 3000;
 
 const start = async () => {
   await connectDB();
   startPayoutCron();
   startDailySummaryCron();
+  startChainEmailAnalysisCron();
+  startChainTelegramAnalysisCron();
+  startTelegramBot();
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 };
 

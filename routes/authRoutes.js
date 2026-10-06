@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { login, workerLogin, adminLogin, superAdminLogin,logout ,getCurrentUser,getCurrentSuperAdmin} = require("../controllers/authController");
+const { login, workerLogin, adminLogin, superAdminLogin,logout ,getCurrentUser,getCurrentSuperAdmin, acceptAdminInvite , acceptChainAdminInvite} = require("../controllers/authController");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { handleValidationErrors } = require("../middleware/validate");
 const { protect, requireRole } = require("../middleware/auth");
@@ -10,8 +10,8 @@ const { loginValidator, superAdminLoginValidator } = require("../validators/auth
 // API limiter applied globally in server.js) — these are the highest-value
 // target for brute-forcing a password.
 
-// Unified login used by the merged worker/admin frontend — role comes back from the server.
-router.post("/login", authLimiter, loginValidator, handleValidationErrors, login);
+// Unified login used by the      loginValidator,  merged worker/admin frontend — role comes back from the server.
+router.post("/login", authLimiter, handleValidationErrors, login);
 
 // Kept for backward compatibility / anything still calling these directly.
 router.post("/worker/login", authLimiter, loginValidator, handleValidationErrors, workerLogin);
@@ -28,5 +28,6 @@ router.post(
   handleValidationErrors,
   superAdminLogin
 );
-
+router.post("/admin-setup", acceptAdminInvite);
+router.post("/chainadmin-setup", acceptChainAdminInvite);
 module.exports = router;

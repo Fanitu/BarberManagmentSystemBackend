@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { protect, requireRole } = require("../middleware/auth");
+const { protect, requireRole,requireActiveWorker } = require("../middleware/auth");
 const { handleValidationErrors } = require("../middleware/validate");
 const {
   createServiceValidator,
@@ -52,6 +52,7 @@ router.post(
   "/log",
   protect,
   requireRole("worker"),
+  requireActiveWorker,
   submitServiceLogValidator,
   handleValidationErrors,
   submitServiceLog
@@ -61,11 +62,12 @@ router.put(
   "/log/:id",
   protect,
   requireRole("worker"),
+  requireActiveWorker,
   updateServiceLogValidator,
   handleValidationErrors,
   updateServiceLog
 );
 
-router.get("/log/today", protect, requireRole("worker", "admin"), listTodayServiceLogs);
+router.get("/log/today", protect, requireRole("worker", "admin"), requireActiveWorker, listTodayServiceLogs);
 
 module.exports = router;
