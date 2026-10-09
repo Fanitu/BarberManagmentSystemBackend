@@ -6,7 +6,7 @@ const { buildTelegramAnalysisMessage } = require("../utils/telegramAnalsisFormat
 // helpers the email cron already defines — exporting them there instead
 // of duplicating is cleaner long-term, but for now this file inlines
 // them from the same source to avoid touching the working email cron.
-const { buildSection, isLastDayOfMonth } = require("./chainEmailAnalysisCron");
+const { buildSection, isLastDayOfMonth ,attachNarrative} = require("./chainEmailAnalysisCron");
 
 const TIMEZONE = process.env.SUMMARY_TIMEZONE || "Africa/Addis_Ababa";
 
@@ -30,10 +30,15 @@ const runChainTelegramAnalysis = async () => {
       const weekly = isSunday ? await buildSection(chainAdmin.shops, "weekly", reportDate) : null;
       const monthly = isMonthEnd ? await buildSection(chainAdmin.shops, "monthly", reportDate) : null;
 
+      await attachNarrative(daily, "daily");
+      await attachNarrative(weekly, "weekly");
+      await attachNarrative(monthly, "monthly");
+
       const text = buildTelegramAnalysisMessage(dateLabel, { daily, weekly, monthly });
       await sendTelegramMessage(chainAdmin.telegramChatId, text);
     } catch (err) {
       console.error(`[chain-telegram-analysis] failed for chain admin ${chainAdmin._id}:`, err.message);
+      Sentry.captureException(err);
     }
   }
 
@@ -42,17 +47,18 @@ const runChainTelegramAnalysis = async () => {
 
 const startChainTelegramAnalysisCron = () => {
   cron.schedule(
-    "39 14 * * *",
+    "21 15 * * *",
     async () => {
       try {
         await runChainTelegramAnalysis();
       } catch (err) {
         console.error("[chain-telegram-analysis] run failed:", err.message);
+        Sentry.captureException(err);
       }
     },
     { timezone: TIMEZONE }
   );
-  console.log(`[chain-telegram-analysis] cron scheduled "0 21 * * *" (${TIMEZONE})`);
+  console.log(`[chain-telegram-analysis] cron scheduled "52 17 * * *" (${TIMEZONE})`);
 };
 
 module.exports = { startChainTelegramAnalysisCron, runChainTelegramAnalysis };

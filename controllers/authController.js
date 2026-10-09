@@ -83,6 +83,7 @@ const workerLogin = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { name, password, barberCode } = req.body;
+    console.log("req body",name,password)
 
     if (!name || !password) {
       return res.status(400).json({ message: "name and password are required" });
@@ -98,10 +99,15 @@ const login = async (req, res, next) => {
       if (!match) {
         return res.status(401).json({ message: "Invalid name or password" });
       }
+
       const token = generateToken({ id: chainAdmin._id, role: "chain_admin" });
       setTokenCookie(res, token);
+
+      console.log("token",token)
+
       return res.json({
         user: { id: chainAdmin._id, name: chainAdmin.name, role: "chain_admin" },
+        token,
       });
     }
 
@@ -131,6 +137,7 @@ const login = async (req, res, next) => {
       return res.json({
         user: { id: admin._id, name: admin.name, role: "admin" },
         barberShop: { id: shop._id, name: shop.name },
+        token,
       });
     }
 
@@ -156,6 +163,7 @@ const login = async (req, res, next) => {
     return res.json({
       user: { id: worker._id, name: worker.name, role: "worker", isActive: worker.isActive },
       barberShop: { id: shop._id, name: shop.name },
+      token,
     });
   } catch (err) {
     next(err);
@@ -202,6 +210,7 @@ const adminLogin = async (req, res, next) => {
     res.json({
       user: { id: admin._id, name: admin.name, role: "admin" },
       barberShop: { id: shop._id, name: shop.name },
+      token
     });
   } catch (err) {
     next(err);
@@ -247,6 +256,7 @@ const acceptChainAdminInvite = async (req, res, next) => {
 
     res.status(201).json({
       user: { id: chainAdmin._id, name: chainAdmin.name, role: "chain_admin" },
+      token: sessionToken
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -282,6 +292,7 @@ const superAdminLogin = async (req, res, next) => {
 
     res.json({
       user: { id: superAdmin._id, name: superAdmin.name, role: "superadmin" },
+      token
     });
   } catch (err) {
     next(err);
@@ -324,6 +335,7 @@ const acceptAdminInvite = async (req, res, next) => {
     res.status(201).json({
       user: { id: admin._id, name: admin.name, role: "admin" },
       barberShop: { id: shop._id, name: shop.name },
+      token: sessionToken
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -342,7 +354,8 @@ const logout = async (req, res) => {
 // Add endpoint to verify session and get current user
 const getCurrentUser = async (req, res, next) => {
   try {
-    const token = req.cookies?.token;
+    const token = req.cookies?.token || (req.headers.authorization?.startsWith("Bearer ") ? 
+                 req.headers.authorization.split(" ")[1] : null);
     
     if (!token) {
       return res.status(401).json({ message: "Not authenticated" });

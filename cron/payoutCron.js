@@ -32,6 +32,7 @@ const runDailyPayout = async () => {
         `[payout-cron] Failed to compute payout for barber ${barber._id}:`,
         err.message
       );
+      Sentry.captureException(err);
     }
   }
 };

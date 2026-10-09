@@ -39,6 +39,13 @@ const buildInsightsList = (lines) => {
   `;
 };
 
+const buildNarrativeBlock = (section) => {
+  if (section.narrative) {
+    return `<p style="margin:10px 0 0; font-size:14px; color:#333; line-height:1.5; font-style:italic;">${section.narrative}</p>`;
+  }
+  return buildInsightsList(section.insights); // fallback when AI call failed or no key configured
+};
+
 const sendAdminInvitationEmail = async (email, shopName, token,shopCode) => {
   const emailTransporter = getTransporter();
   
@@ -173,12 +180,14 @@ const sendAdminInvitationEmail = async (email, shopName, token,shopCode) => {
               
               <div class="features">
                 <h3>✨ What You Can Do With Our Platform:</h3>
-                <div class="feature-item">Manage appointments effortlessly</div>
-                <div class="feature-item">Track customer history and preferences</div>
+                <div class="feature-item">Manage Shop effortlessly</div>
+                <div class="feature-item">Track each and every Barber performance</div>
                 <div class="feature-item">Manage your barber team efficiently</div>
                 <div class="feature-item">View real-time analytics and reports</div>
                 <div class="feature-item">Reduce no-shows with automated reminders</div>
-                <div class="feature-item">Increase revenue with better organization</div>
+                <div class="feature-item">Increase revenue with better organization and all time analysis</div>
+                <div class="feature-item">Making decision with real time analysis and reports</div>
+                <div class="feature-item">And much more!</div>
               </div>
 
               <p><strong>Ready to get started?</strong></p>
@@ -237,7 +246,7 @@ const sendChainAdminInvitationEmail = async (email, token) => {
     throw new Error('SMTP_FROM is not set. Please configure your email settings');
   }
 
-  const setupUrl = `${'http://localhost:5174' || 'http://localhost:5174'}/chainadmin-setup/${token}`;
+  const setupUrl = `${'http://localhost:5173' || 'http://localhost:5173'}/chainadmin-setup/${token}`;
 
   const mailOptions = {
     from: `"MB Barber Management" <${fromEmail}>`,
@@ -277,6 +286,11 @@ const sendChainAdminInvitationEmail = async (email, token) => {
                 <div class="feature-item">Create new shops directly under your account</div>
                 <div class="feature-item">Compare running costs and monthly expenses shop-by-shop</div>
                 <div class="feature-item">Drill into any single shop's full admin view in one click</div>
+                <div class="feature-item">Check out all shops progress daily weekly mothly efficiently</div>
+                <div class="feature-item">Check which shops are making or losing money</div>
+                <div class="feature-item">Know are you getting profite in any period of time</div>
+                <div class="feature-item">Get daily, weekly and mothly analysis send to you email or telegram or both</div>
+                <div class="feature-item">And much more!</div>
               </div>
 
               <p><strong>Ready to get started?</strong></p>
@@ -380,7 +394,7 @@ const sendChainDailyAnalysisEmail = async (email, chainAdminName, dateLabel, sec
       <p>Hi ${chainAdminName},</p>
       <p>Here's how your shops performed today. Total revenue across all shops: <strong>${formatMoney(totalDailyRevenue)} Birr</strong>.</p>
      ${buildShopTable(sections.daily.rows, DAILY_COLUMNS)}
-      ${buildInsightsList(sections.daily.insights)}
+      ${buildNarrativeBlock(sections.daily)}
   `;
 
   if (sections.weekly) {
@@ -389,7 +403,7 @@ const sendChainDailyAnalysisEmail = async (email, chainAdminName, dateLabel, sec
       <h3 style="margin-top:28px;">This Week's Summary</h3>
       <p>Total weekly revenue across all shops: <strong>${formatMoney(totalWeeklyRevenue)} Birr</strong>.</p>
       ${buildShopTable(sections.weekly.rows, WEEKLY_COLUMNS)}
-      ${buildInsightsList(sections.weekly.insights)}
+      ${buildNarrativeBlock(sections.weekly)}
     `;
   }
 
@@ -399,7 +413,7 @@ const sendChainDailyAnalysisEmail = async (email, chainAdminName, dateLabel, sec
       <h3 style="margin-top:28px;">This Month's Financial Summary</h3>
       <p>Total net profit across all shops this month: <strong>${formatMoney(totalNetProfit)} Birr</strong>.</p>
       ${buildShopTable(sections.monthly.rows, MONTHLY_COLUMNS)}
-      ${buildInsightsList(sections.monthly.insights)}
+      ${buildNarrativeBlock(sections.monthly)}
     `;
   }
 

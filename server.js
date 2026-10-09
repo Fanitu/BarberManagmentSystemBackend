@@ -1,6 +1,13 @@
 require("dotenv").config();
 process.env.TZ = process.env.APP_TIMEZONE || "Africa/Addis_Ababa";
 const express = require("express");
+const Sentry = require("@sentry/node");
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || "development",
+  tracesSampleRate: 1.0, // capture 100% of transactions while traffic is low; lower this (e.g. 0.1) once you have real volume
+});
 const cookieParser = require('cookie-parser');
 const cors = require("cors");
 const helmet = require("helmet");
@@ -74,12 +81,12 @@ app.use("/api/revenue", revenueRoutes);
 app.use("/api/payouts", payoutRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 
-app.use("/api/chainadmin",(req,res,next) =>{ 
-    console.log("we get to chainadmin:", req.body) 
-    next()}, chainAdminRoutes);
+app.use("/api/chainadmin", chainAdminRoutes);
 app.use("/api/workers", workerRoutes);
+app.get("/api/debug-sentry", () => { throw new Error("Sentry test error"); });
 
 app.use(notFound);
+app.use(Sentry.expressErrorHandler());
 app.use(errorHandler);
 
 

@@ -740,6 +740,30 @@ const assertOwnsBarber = async (chainAdminId, barberId) => {
   return owns ? barber : null;
 };
 
+// POST /api/chainadmin/barbers  body: { shopId, name, phone, paymentDay }
+const createBarberForShop = async (req, res, next) => {
+  try {
+    const { shopId, name, phone, paymentDay } = req.body;
+    if (!shopId || !name) {
+      return res.status(400).json({ message: "shopId and name are required" });
+    }
+    if (!(await assertOwnsShop(req.user.id, shopId))) {
+      return res.status(403).json({ message: "You don't manage this shop" });
+    }
+
+    const barber = await Barber.create({
+      name: name.trim(),
+      phone,
+      paymentDay: paymentDay ?? 0,
+      barberShop: shopId,
+    });
+
+    res.status(201).json(barber);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // PUT /api/chainadmin/barbers/:id  body: { name, phone, paymentDay }
 const updateBarber = async (req, res, next) => {
   try {
@@ -1387,4 +1411,4 @@ const assertOwnsMonthlyExpense = async (chainAdminId, expenseId) => {
 
 
 
-module.exports = { listMyShops, createShop, enterShopView, exitShopView,getReports,getShopsRevenueOverview,listPayableBarbersToday, payBarberNow, listPayoutHistory, getPayoutDetail,getShopsIncomeHistory,getShopsBarbersHistory,getShopsMonthlyExpense, listAllBarbers, updateBarber, deleteBarber, listAllWorkers,activateWorker, deactivateWorker, deleteWorker,getShopsProgress, setEmailAnalysisEnabled, getSettings,computeShopEntry ,listRunningCosts, createRunningCost, listMonthlyExpenses, createMonthlyExpense,getOverallProfit, listAllServices, createShopService, updateShopService, deleteShopService, changeChainAdminPassword ,saveTelegramPhone, setTelegramAnalysisEnabled, updateMonthlyExpense, deleteMonthlyExpense };
+module.exports = { listMyShops, createShop, enterShopView, exitShopView,getReports,getShopsRevenueOverview,listPayableBarbersToday, payBarberNow, listPayoutHistory, getPayoutDetail,getShopsIncomeHistory,getShopsBarbersHistory,getShopsMonthlyExpense, createBarberForShop,listAllBarbers, updateBarber, deleteBarber, listAllWorkers,activateWorker, deactivateWorker, deleteWorker,getShopsProgress, setEmailAnalysisEnabled, getSettings,computeShopEntry ,listRunningCosts, createRunningCost, listMonthlyExpenses, createMonthlyExpense,getOverallProfit, listAllServices, createShopService, updateShopService, deleteShopService, changeChainAdminPassword ,saveTelegramPhone, setTelegramAnalysisEnabled, updateMonthlyExpense, deleteMonthlyExpense };

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect, requireRole } = require("../middleware/auth");
-const { listMyShops, createShop, enterShopView, exitShopView,getReports,getShopsRevenueOverview,listPayableBarbersToday, payBarberNow, listPayoutHistory, getPayoutDetail,getShopsIncomeHistory,getShopsBarbersHistory,getShopsMonthlyExpense,listAllBarbers, updateBarber, deleteBarber, listAllWorkers,activateWorker, deactivateWorker, deleteWorker,getShopsProgress,getSettings,setEmailAnalysisEnabled,listRunningCosts, createRunningCost, listMonthlyExpenses, createMonthlyExpense,getOverallProfit,
+const { listMyShops, createShop, enterShopView, exitShopView,getReports,getShopsRevenueOverview,listPayableBarbersToday, payBarberNow, listPayoutHistory, getPayoutDetail,getShopsIncomeHistory,getShopsBarbersHistory,getShopsMonthlyExpense,listAllBarbers,createBarberForShop, updateBarber, deleteBarber, listAllWorkers,activateWorker, deactivateWorker, deleteWorker,getShopsProgress,getSettings,setEmailAnalysisEnabled,listRunningCosts, createRunningCost, listMonthlyExpenses, createMonthlyExpense,getOverallProfit,
     listAllServices, createShopService, updateShopService, deleteShopService,changeChainAdminPassword,saveTelegramPhone, setTelegramAnalysisEnabled , updateMonthlyExpense, deleteMonthlyExpense 
  } = require("../controllers/chainAdminController");
 
@@ -24,6 +24,7 @@ router.get("/payouts/history", listPayoutHistory);
 router.get("/payouts/history/detail", getPayoutDetail);
 
 router.get("/barbers", listAllBarbers);
+router.post("/barbers", createBarberForShop);
 router.put("/barbers/:id", updateBarber);
 router.delete("/barbers/:id", deleteBarber);
 router.get("/workers", listAllWorkers);

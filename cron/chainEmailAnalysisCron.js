@@ -4,6 +4,7 @@ const { computeShopEntry } = require("../controllers/chainAdminController");
 const { sendChainDailyAnalysisEmail } = require("../utils/emailService");
 const {buildShopInsight} = require("../utils/chainAnalysisInsights");
 const {getDateRange } = require("../utils/dateRanges");
+const {generateAccountingNarrative} = require("../utils/aiNarative");
 
 const TIMEZONE = process.env.SUMMARY_TIMEZONE || "Africa/Addis_Ababa";
 
@@ -40,6 +41,13 @@ const buildSection = async (shops, period, referenceDate) => {
   return { rows, insights };
 };
 
+const attachNarrative = async (section, period) => {
+  if (!section) return section;
+  section.narrative = await generateAccountingNarrative(period, section.rows, section.insights);
+  return section;
+};
+
+
 
 const runChainEmailAnalysis = async () => {
   const reportDate = new Date(); // report on the day that just ended, same convention as daily-summary cron
@@ -60,9 +68,15 @@ const runChainEmailAnalysis = async () => {
      const weekly = isSunday ? await buildSection(chainAdmin.shops, "weekly", reportDate) : null;
      const monthly = isMonthEnd ? await buildSection(chainAdmin.shops, "monthly", reportDate) : null;
 
+     await attachNarrative(daily, "daily");
+     await attachNarrative(weekly, "weekly");
+     await attachNarrative(monthly, "monthly");
+
+
       await sendChainDailyAnalysisEmail(chainAdmin.email, chainAdmin.name, dateLabel, { daily, weekly, monthly });
     } catch (err) {
       console.error(`[chain-email-analysis] failed for chain admin ${chainAdmin._id}:`, err.message);
+      Sentry.captureException(err);
     }
   }
 
@@ -73,18 +87,19 @@ const startChainEmailAnalysisCron = () => {
   // Runs after the 1am daily-summary cron so computeShopEntry's underlying
   // data (DailySummary rows) is already settled for "yesterday".
   cron.schedule(
-    "12 17 * * *",
+    "21 15 * * *",
     async () => {
       try {
         await runChainEmailAnalysis();
       } catch (err) {
         console.error("[chain-email-analysis] run failed:", err.message);
+        Sentry.captureException(err);
       }
     },
     { timezone: TIMEZONE }
   );
 
-  console.log(`[chain-email-analysis] cron scheduled "3 17 * * *" (${TIMEZONE})`);
+  console.log(`[chain-email-analysis] cron scheduled "52 17 * * *" (${TIMEZONE})`);
 };
 
-module.exports = { startChainEmailAnalysisCron, runChainEmailAnalysis, buildSection,isLastDayOfMonth };
+module.exports = { startChainEmailAnalysisCron, runChainEmailAnalysis, buildSection,isLastDayOfMonth,attachNarrative };

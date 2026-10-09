@@ -6,6 +6,14 @@ const buildTextTable = (rows, columns) => {
   return "```\n" + [header, ...lines].join("\n") + "\n```";
 };
 
+
+const buildNarrativeOrInsights = (section) => {
+  if (section.narrative) return `\n_${section.narrative}_\n`;
+  if (section.insights.length > 0) return "\n" + section.insights.map((line) => `• ${line}`).join("\n") + "\n";
+  return "";
+};
+
+
 const DAILY_COLUMNS = [
   { label: "Shop", value: (r) => r.name },
   { label: "Revenue", value: (r) => formatMoney(r.totalRevenue) },
@@ -19,17 +27,13 @@ const buildTelegramAnalysisMessage = (dateLabel, sections) => {
   text += `Total revenue today: *${formatMoney(totalDailyRevenue)} Birr*\n`;
   text += buildTextTable(sections.daily.rows, DAILY_COLUMNS) + "\n";
 
-  if (sections.daily.insights.length > 0) {
-    text += "\n" + sections.daily.insights.map((line) => `• ${line}`).join("\n") + "\n";
-  }
+ text += buildNarrativeOrInsights(sections.daily);
 
   if (sections.weekly) {
     const totalWeekly = sections.weekly.rows.reduce((sum, r) => sum + r.totalRevenue, 0);
     text += `\n*This Week's Summary*\nTotal: *${formatMoney(totalWeekly)} Birr*\n`;
     text += buildTextTable(sections.weekly.rows, DAILY_COLUMNS) + "\n";
-    if (sections.weekly.insights.length > 0) {
-      text += sections.weekly.insights.map((line) => `• ${line}`).join("\n") + "\n";
-    }
+    text += buildNarrativeOrInsights(sections.weekly);
   }
 
   if (sections.monthly) {
@@ -39,9 +43,7 @@ const buildTelegramAnalysisMessage = (dateLabel, sections) => {
       sections.monthly.rows,
       [...DAILY_COLUMNS, { label: "Profit", value: (r) => formatMoney(r.netProfit) }]
     ) + "\n";
-    if (sections.monthly.insights.length > 0) {
-      text += sections.monthly.insights.map((line) => `• ${line}`).join("\n") + "\n";
-    }
+    text += buildNarrativeOrInsights(sections.monthly);
   }
 
   return text;
