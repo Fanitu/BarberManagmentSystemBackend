@@ -122,6 +122,7 @@ const enterShopView = async (req, res, next) => {
     res.json({
       user: { id: chainAdmin._id, name: chainAdmin.name, role: "admin" },
       barberShop: { id: shop._id, name: shop.name },
+      token,
     });
   } catch (err) {
     next(err);
@@ -138,7 +139,7 @@ const exitShopView = async (req, res, next) => {
     const { setTokenCookie } = require("./authController");
     setTokenCookie(res, token);
 
-    res.json({ user: { id: chainAdmin._id, name: chainAdmin.name, role: "chain_admin" } });
+    res.json({ user: { id: chainAdmin._id, name: chainAdmin.name, role: "chain_admin" }, token });
   } catch (err) {
     next(err);
   }
