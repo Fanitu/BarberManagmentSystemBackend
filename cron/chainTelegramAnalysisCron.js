@@ -47,7 +47,7 @@ const runChainTelegramAnalysis = async () => {
 
 const startChainTelegramAnalysisCron = () => {
   cron.schedule(
-    "21 15 * * *",
+    "25 22 * * *",
     async () => {
       try {
         await runChainTelegramAnalysis();

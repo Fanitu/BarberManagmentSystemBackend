@@ -17,9 +17,13 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 const { generalLimiter } = require("./middleware/rateLimiter");
 const { startPayoutCron } = require("./cron/payoutCron");
 const { startDailySummaryCron } = require("./cron/dailySummaryCron");
-const { startChainEmailAnalysisCron } = require("./cron/chainEmailAnalysisCron");
 const { startTelegramBot } = require("./bot/telegramBot");
-const { startChainTelegramAnalysisCron } = require("./cron/chainTelegramAnalysisCron");
+const {startChainAnalysisCron} = require("./cron/chainAnalysisCron")
+
+
+//const { startChainTelegramAnalysisCron } = require("./cron/chainTelegramAnalysisCron");
+// const { startChainEmailAnalysisCron } = require("./cron/chainEmailAnalysisCron");
+
 
 const authRoutes = require("./routes/authRoutes");
 const barberRoutes = require("./routes/barberRoutes");
@@ -96,8 +100,9 @@ const start = async () => {
   await connectDB();
   startPayoutCron();
   startDailySummaryCron();
-  startChainEmailAnalysisCron();
-  startChainTelegramAnalysisCron();
+  startChainAnalysisCron()
+  //startChainEmailAnalysisCron();
+  //startChainTelegramAnalysisCron();
   startTelegramBot();
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 };

@@ -87,7 +87,7 @@ const startChainEmailAnalysisCron = () => {
   // Runs after the 1am daily-summary cron so computeShopEntry's underlying
   // data (DailySummary rows) is already settled for "yesterday".
   cron.schedule(
-    "21 15 * * *",
+    "25 22 * * *",
     async () => {
       try {
         await runChainEmailAnalysis();

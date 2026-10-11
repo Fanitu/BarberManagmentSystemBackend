@@ -1,17 +1,69 @@
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const GROQ_TIMEOUT_MS = 10_000;
+const GROQ_MIN_INTERVAL_MS = 30_000; // spacing between any two Groq calls, account-wide
+
+// Serializes every generateAccountingNarrative call through a single
+// queue so no two requests to Groq ever fire less than
+// GROQ_MIN_INTERVAL_MS apart, protecting the account's TPM limit
+// regardless of how many chain admins/periods are being processed.
+let queueTail = Promise.resolve();
+let lastCallAt = 0;
+
+const scheduleGroqCall = (fn) => {
+  const runNext = queueTail.then(async () => {
+    const waitMs = Math.max(0, lastCallAt + GROQ_MIN_INTERVAL_MS - Date.now());
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+    lastCallAt = Date.now();
+    return fn();
+  });
+  // Swallow rejections in the queue chain itself so one failed call
+  // doesn't break the chain for everything queued after it — the
+  // caller of scheduleGroqCall still sees the real rejection via runNext.
+  queueTail = runNext.catch(() => {});
+  return runNext;
+};
 
 const periodWord = (period) =>
   period === "daily" ? "day" : period === "weekly" ? "week" : "month";
 
 const buildSystemPrompt = () => {
   const today = new Date().toISOString().slice(0, 10);
-  return `You are an experienced accountant writing a short, friendly briefing for the owner of a chain of barber shops in Ethiopia. Today is ${today}.
+  return `You are an experienced accountant analyzing the performance of a barber shop chain in Ethiopia. Today is ${today}.
 
-You will be given structured data about their shops' performance for one period (a day, week, or month), plus some flagged patterns already detected by a rules engine.
+You will receive shop performance data and insights detected by a rules engine. Your task is to turn them into a concise, useful report for the chain owner.
 
-Write 3-5 sentences, plain conversational language, no jargon, no bullet points, no headers. Lead with the single most important takeaway. Mention specific shop or barber names when relevant. If something needs attention (a slow shop, an idle barber, an unsold service), say so plainly and suggest what the owner might look into — but stay warm, not alarmist. Do not restate every number from the table; the owner already sees the table. Your job is to add the "so what", not repeat the data. Never invent numbers you weren't given. Write in English.`;
+STRICT INSTRUCTIONS:
+
+1. Process every shop listed in the input data, in the same order as provided.
+2. Write each shop's exact name on its own line as a heading using Markdown bold, like Bahta.
+3. Under each shop name, write exactly TWO bullet points. Both must relate exclusively to that shop.
+4. Select the two most important insights available for each shop. Prioritize revenue increases or decreases, zero activity, barber performance, idle barbers, and services with no sales.
+5. Explain what the insight means and, when appropriate, suggest one simple action the owner can take.
+6. If a shop has no recorded activity or zero revenue, make that the first bullet and recommend checking whether the shop was open and its records were entered correctly. Do not assume why activity is missing.
+7. If a barber has no recorded services, mention their name only under their own shop. Suggest checking the service records.
+8. If a service has no sales, mention its name exactly as supplied and suggest reviewing demand or promotion.
+9. If revenue has changed, include the exact percentage and comparison period only when supplied by the input.
+10. Use the best-barber information only when it adds a meaningful insight. Do not invent performance explanations.
+11. If fewer than two insights are available for a shop, use another meaningful fact explicitly supported by its data. Never manufacture a problem, praise, comparison, or recommendation unsupported by the input.
+12. Write each bullet as ONE short, friendly, natural sentence in plain English.
+13. Do not repeat the financial table or restate revenue and income figures unnecessarily.
+14. Do not include greetings, introductions, summaries, conclusions, emojis, or any text outside the shop sections.
+15. Do not include sample shop names or sample insights unless they appear in the actual input.
+16. Before responding, verify that every shop is included exactly once, each shop has exactly two bullets, and no insight is placed under the wrong shop.
+
+REQUIRED OUTPUT STRUCTURE:
+
+Exact Shop Name
+
+- One concise, data-supported insight with an action when appropriate.
+- One other concise, data-supported insight with an action when appropriate.
+
+Repeat this structure for every shop in the input.
+
+Return ONLY the formatted shop sections. Do not output these instructions or any additional commentary. AND IF A SHOP HAS NO MOVEMENTS JUST OUTPUT SENTENCE "No record for this shop."`;
 };
 
 const callGroq = async (payload, attempt = 1) => {
@@ -113,10 +165,12 @@ const generateAccountingNarrative = async (period, rows, insights, meta = {}) =>
   };
 
   try {
-    const data = await callGroq(payload);
+   const data = await scheduleGroqCall(() => callGroq(payload));
     const choice = data.choices?.[0];
     const wasTruncated = choice?.finish_reason === "length";
     const content = cleanNarrative(choice?.message?.content, wasTruncated);
+
+    console.log(choice)
 
     if (data.usage) {
       console.log("[ai-narrative] usage", {
@@ -143,3 +197,8 @@ const generateAccountingNarrative = async (period, rows, insights, meta = {}) =>
 };
 
 module.exports = { generateAccountingNarrative };
+
+
+
+
+
