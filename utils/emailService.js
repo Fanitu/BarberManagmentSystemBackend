@@ -246,7 +246,7 @@ const sendChainAdminInvitationEmail = async (email, token) => {
     throw new Error('SMTP_FROM is not set. Please configure your email settings');
   }
 
-  const setupUrl = `${'http://localhost:5173' || 'http://localhost:5173'}/chainadmin-setup/${token}`;
+  const setupUrl = `${'https://barber-managment-system.vercel.app/' || 'https://barber-managment-system.vercel.app/'}/chainadmin-setup/${token}`;
 
   const mailOptions = {
     from: `"MB Barber Management" <${fromEmail}>`,
