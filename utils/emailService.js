@@ -4,7 +4,7 @@ require('dotenv').config();
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_FROM;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5174';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://barber-managment-system.vercel.app/';
 
 const buildInsightsList = (lines) => {
   if (!lines || lines.length === 0) return "";
