@@ -83,7 +83,6 @@ const workerLogin = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { name, password, barberCode } = req.body;
-    console.log("req body",name,password)
 
     if (!name || !password) {
       return res.status(400).json({ message: "name and password are required" });
@@ -101,10 +100,9 @@ const login = async (req, res, next) => {
       }
 
       const token = generateToken({ id: chainAdmin._id, role: "chain_admin" });
+
       setTokenCookie(res, token);
-
-      console.log("token",token)
-
+      
       return res.json({
         user: { id: chainAdmin._id, name: chainAdmin.name, role: "chain_admin" },
         token,

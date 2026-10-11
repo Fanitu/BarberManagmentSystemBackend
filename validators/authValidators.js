@@ -3,11 +3,6 @@ const { body } = require("express-validator");
 const loginValidator = [
   body("name").trim().notEmpty().withMessage("name is required").isLength({ max: 100 }),
   body("password").notEmpty().withMessage("password is required").isLength({ max: 200 }),
-  body("barberCode")
-    .trim()
-    .notEmpty()
-    .withMessage("barberCode is required")
-    .isLength({ max: 30 }),
 ];
 
 const superAdminLoginValidator = [
