@@ -110,7 +110,7 @@ const runChainAnalysis = async () => {
 
 const startChainAnalysisCron = () => {
   cron.schedule(
-    "18 17 * * *", // 9:00 PM Addis Ababa time
+    "00 21 * * *", // 9:00 PM Addis Ababa time
     async () => {
       try {
         await runChainAnalysis();
